@@ -180,7 +180,7 @@ const start = async function () {
   app.get('/query', function (req, res) {
     let code = JSON.stringify(defaultQuery, null, 2)
     res.render('explorer', {
-      name: 'BMAP',
+      name: 'CHRONOS',
       code: code,
     })
   })
@@ -189,7 +189,7 @@ const start = async function () {
     let b64 = req.params[0]
     let code = Buffer.from(b64, 'base64').toString()
     res.render('explorer', {
-      name: 'BMAP',
+      name: 'CHRONOS',
       code: code,
     })
   })

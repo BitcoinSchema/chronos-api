@@ -4,10 +4,10 @@ import {
 } from '@gorillapool/js-junglebus'
 import BPU from 'bpu'
 import chalk from 'chalk'
-import { saveTx } from './actions.js'
+import { clearConfirmed, saveTx } from './actions.js'
 import { getDbo } from './db.js'
 
-let currentBlock = 0
+let currentBlock = 778119
 let synced = false
 
 const bobFromRawTx = async (rawtx) => {
@@ -33,22 +33,27 @@ const crawl = (height, jungleBusClient) => {
   return new Promise(async (resolve, reject) => {
     // only block indexes greater than given height
 
+    let confirmedTxs = []
     // create subscriptions in the dashboard of the JungleBus website
     const subId =
-      '3f600280c71978452b73bc7d339a726658e4b4dd5e06a50bd81f6d6ddd85abe9'
+      'fe2f534c4d01b3e2c03ec261033ebf9e24e876ef46d35f13da5b146079b8e980'
     await jungleBusClient.Subscribe(
       subId,
       currentBlock || height,
       async function onPublish(ctx) {
-        //console.log('TRANSACTION', ctx.id)
-        return new Promise((resolve, reject) => {
-          setTimeout(async () => {
-            resolve(await processTransaction(ctx))
-          }, 1000)
-        })
+        console.log('BLOCK TRANSACTION', ctx.id)
+        confirmedTxs.push(ctx.id)
+
+        if (confirmedTxs.length > 100) {
+          return await clearConfirmed(confirmedTxs)
+        } else {
+          return
+        }
       },
       function onStatus(cMsg) {
         if (cMsg.statusCode === ControlMessageStatusCode.BLOCK_DONE) {
+          // TODO: Clear all txs in the block from db
+
           // add your own code here
           setCurrentBlock(cMsg.block)
           console.log(
@@ -90,11 +95,13 @@ export async function processTransaction(ctx: Partial<Transaction>) {
   let result: any
   try {
     result = await bobFromRawTx(ctx.transaction)
-    result.blk = {
-      i: ctx.block_height || 0,
-      t: ctx.block_time || Math.round(new Date().getTime() / 1000),
-      m: ctx.merkle_proof || '',
-      h: ctx.block_hash || '',
+    if (result.blk) {
+      result.blk = {
+        i: ctx.block_height || 0,
+        t: ctx.block_time || Math.round(new Date().getTime() / 1000),
+        m: ctx.merkle_proof || '',
+        h: ctx.block_hash || '',
+      }
     }
 
     // TODO: it is possible it doesn't have a timestamp at all if we missed it from mempool

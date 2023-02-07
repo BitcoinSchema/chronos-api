@@ -9,12 +9,13 @@ const getDbo = async () => {
     return db
   } else {
     try {
-      client = await MongoClient.connect(process.env.MONGO_URL, {
+      console.log('connecting to', process.env.CHRONOS_MONGO_URL)
+      client = await MongoClient.connect(process.env.CHRONOS_MONGO_URL, {
         poolSize: 10,
         useUnifiedTopology: true,
         useNewUrlParser: true,
       })
-      db = client.db('bmap')
+      db = client.db('chronos')
       return db
     } catch (e) {
       throw e

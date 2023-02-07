@@ -1,6 +1,7 @@
 import { bmap } from 'bmapjs'
 import chalk from 'chalk'
 import { getDbo } from './db.js'
+let confirmedTxs = []
 
 const { TransformTx } = bmap
 
@@ -21,40 +22,6 @@ const saveTx = async (tx) => {
     throw new Error('Failed to transform tx ' + tx)
   }
 
-  // get BAP IDs for given social op
-  if (t.AIP) {
-    let bap
-    // multiple AIP outputs
-    if (Array.isArray(t.AIP)) {
-      for (let i = 0; i < t.AIP.length; i++) {
-        const { address } = t.AIP[i]
-        bap = await getBAPIdByAddress(
-          address,
-          t.blk.i || undefined,
-          t.timestamp
-        )
-        //TODO: add && bap.valid === true when BAP API returns this correctly
-        if (bap) {
-          console.log('bap ID found', bap.idKey)
-          t.AIP[i].bapId = bap.idKey
-          if (bap.identity) {
-            t.AIP[i].identity = JSON.parse(bap.identity)
-          }
-        }
-      }
-    } else {
-      const { address } = t.AIP
-      bap = await getBAPIdByAddress(address, t.blk.i || undefined, t.timestamp)
-      if (bap) {
-        console.log('bap ID found', bap.idKey)
-        t.AIP.bapId = bap.idKey
-        if (bap.identity) {
-          t.AIP.identity = JSON.parse(bap.identity)
-        }
-      }
-    }
-  }
-
   if (t) {
     let collection = t.blk ? 'c' : 'u'
     let txId = tx && tx.tx ? tx.tx.h : undefined
@@ -62,6 +29,8 @@ const saveTx = async (tx) => {
     try {
       let timestamp = t.timestamp
       delete t.timestamp
+      console.log({ tx })
+
       await dbo.collection(collection).updateOne(
         { _id: t._id },
         {
@@ -74,6 +43,11 @@ const saveTx = async (tx) => {
           upsert: true,
         }
       )
+
+      // if this was a confirmed tx, make sure its not in mempool
+      if (t.blk) {
+        confirmedTxs.push(t.tx.h)
+      }
       return t
     } catch (e) {
       console.log('not inserted', e)
@@ -89,6 +63,33 @@ const saveTx = async (tx) => {
   } else {
     throw new Error('Invalid tx')
   }
+}
+
+const clearConfirmed = (txIds: string[]) => {
+  return new Promise<void>(async (res, rej) => {
+    let dbo = await getDbo()
+
+    try {
+      let collection = 'u'
+
+      await dbo.collection(collection).deleteMany({ _id: { $in: txIds } })
+      console.log('txids removed from unconfirmed collection', txIds)
+      // ToDo - This can throw errors during sync
+      // await dbo.collection('u').drop(async function (err, delOK) {
+      //   if (err) {
+      //     // await closeDb()
+      //     rej(err)
+      //     return
+      //   }
+      //   if (delOK) res()
+      // })
+      // await closeDb()
+      res()
+    } catch (e) {
+      // await closeDb()
+      rej(e)
+    }
+  })
 }
 
 const clearUnconfirmed = () => {
@@ -125,7 +126,7 @@ const clearUnconfirmed = () => {
   })
 }
 
-export { saveTx, clearUnconfirmed }
+export { saveTx, clearUnconfirmed, clearConfirmed }
 
 const bapApiUrl = `https://bap-api.com/v1`
 const getBAPIdByAddress = async function (address, block, timestamp) {

@@ -7,7 +7,7 @@ import { crawler, setCurrentBlock } from './crawler.js'
 import { closeDb, getDbo } from './db.js'
 import { ensureEnvVars } from './env.js'
 import { getCurrentBlock } from './state.js'
-
+import { fetchBlocklHeaders } from './woc.js'
 /* Bitsocket runs in a child process */
 
 // const bitsocket = fork('./build/bitsocket')
@@ -52,48 +52,57 @@ let connectionStatus = ConnectionStatus.Disconnected
 const start = async () => {
   await ensureEnvVars()
   await getDbo() // warm up db connection
+  const blockHeaders = await fetchBlocklHeaders()
+  if (blockHeaders?.length > 0) {
+    const currentBlockHeight = blockHeaders[0].height
 
-  try {
-    // Should really start with latest blk from ANY collection, not only video like this
-    let currentBlock = await getCurrentBlock()
-    setCurrentBlock(currentBlock)
-    console.log(chalk.cyan('crawling from', currentBlock))
+    try {
+      // Should really start with latest blk from ANY collection, not only video like this
+      let currentBlock = await getCurrentBlock()
+      if (currentBlockHeight > currentBlock) {
+        setCurrentBlock(currentBlockHeight)
+        console.log(chalk.cyan('crawling from', currentBlockHeight))
+      } else {
+        setCurrentBlock(currentBlock)
+        console.log(chalk.cyan('crawling from', currentBlock))
+      }
 
-    const s = 'junglebus.gorillapool.io'
-    console.log('CRAWLING', s)
-    const jungleBusClient = new JungleBusClient(s, {
-      debug: true,
-      protocol: 'protobuf',
-      onConnected(ctx) {
-        // add your own code here
-        connectionStatus = ConnectionStatus.Connected
-        api.send({ status: connectionStatus, type: 'status' })
-        console.log(ctx)
-      },
-      onConnecting(ctx) {
-        // add your own code here
-        connectionStatus = ConnectionStatus.Connecting
-        api.send({ status: connectionStatus, type: 'status' })
-        console.log(ctx)
-      },
-      onDisconnected(ctx) {
-        // add your own code here
-        connectionStatus = ConnectionStatus.Disconnected
-        api.send({ status: connectionStatus, type: 'status' })
-        console.log(ctx)
-      },
-      onError(ctx) {
-        // add your own code here
-        console.error(ctx)
-        connectionStatus = ConnectionStatus.Error
-        api.send({ status: connectionStatus, type: 'status' })
-        // reject(ctx)
-      },
-    })
+      const s = 'junglebus.gorillapool.io'
+      console.log('CRAWLING', s)
+      const jungleBusClient = new JungleBusClient(s, {
+        debug: true,
+        protocol: 'protobuf',
+        onConnected(ctx) {
+          // add your own code here
+          connectionStatus = ConnectionStatus.Connected
+          api.send({ status: connectionStatus, type: 'status' })
+          console.log(ctx)
+        },
+        onConnecting(ctx) {
+          // add your own code here
+          connectionStatus = ConnectionStatus.Connecting
+          api.send({ status: connectionStatus, type: 'status' })
+          console.log(ctx)
+        },
+        onDisconnected(ctx) {
+          // add your own code here
+          connectionStatus = ConnectionStatus.Disconnected
+          api.send({ status: connectionStatus, type: 'status' })
+          console.log(ctx)
+        },
+        onError(ctx) {
+          // add your own code here
+          console.error(ctx)
+          connectionStatus = ConnectionStatus.Error
+          api.send({ status: connectionStatus, type: 'status' })
+          // reject(ctx)
+        },
+      })
 
-    await crawler(jungleBusClient)
-  } catch (e) {
-    console.error(e)
+      await crawler(jungleBusClient)
+    } catch (e) {
+      console.error(e)
+    }
   }
 }
 
