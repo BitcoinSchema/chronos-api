@@ -1,8 +1,8 @@
-# bmap-api
+# chronos-api
 
-This API is hosted publicly at https://b.map.sv
+This API is hosted publicly at https://chronos.map.sv
 
-It is a Bitcoin transaction indexer and API for building 'BMAP' Bitcoin apps. It uses [junglebus](https://junglebus.gorillapool.io) to crawl for transactions and transforms them with [bmapjs](https://bmapjs.com). It runs two processes:
+It is a Bitcoin transaction indexer and API for building real-time Bitcoin apps. It uses [junglebus](https://junglebus.gorillapool.io) to crawl for transactions and transforms them with [bmapjs](https://bmapjs.com). It automatically prunes transactions 24h old. It runs two processes:
 
 ## Crawler
 
@@ -17,7 +17,7 @@ A REST API supporting BitQuery syntax.
 ```json
 {
   "find": {
-    "MAP.app": "tonicpow"
+    "MAP.app": "jamify.xyz"
   }
 }
 ```
@@ -37,7 +37,7 @@ For a full list of what protocols are supported see [bmapjs.com](https://bmapjs.
 It also makes working with the results from your frontend much friendlier
 
 ```js
-let res = await fetch("https://b.map.sv/q/...");
+let res = await fetch("https://chronos.map.sv/q/...");
 let j = res.json();
 console.log("Got tx", j[0].tx.h, "app:", j[0].MAP.app);
 ```
@@ -62,7 +62,7 @@ var sock = {
 
 ```js
 var sock_b64 = btoa(JSON.stringify(sock))
-var socket_url = 'https://b.map.sv/s/'+sock_b64
+var socket_url = 'https://chronos.map.sv/s/'+sock_b64
 
   // socket
   bmapSocket = new EventSource(socket_url)
@@ -99,7 +99,7 @@ yarn start
 Build the image
 
 ```bash
-docker build -t bmap-api.
+docker build -t chronos-api.
 ```
 
 Start the app
@@ -133,12 +133,6 @@ node index
 ````
 
 # More Examples
-
-[MAP.app = TonicPow](https://b.map.sv/query/ewogICJ2IjogMywKICAicSI6IHsKICAgICJmaW5kIjogewogICAgICAiTUFQLmFwcCI6ICJ0b25pY3BvdyIKICAgIH0sCiAgICAic29ydCI6IHsgImJsay5pIjogLTEgfSwKICAgICJsaW1pdCI6IDEwCiAgfQp9)
-
-[BITPIC.paymail = satchmo@moneybutton.com](https://b.map.sv/query/ewogICJ2IjogMywKICAicSI6IHsKICAgICJmaW5kIjogewogICAgICAiQklUUElDLnBheW1haWwiOiAic2F0Y2htb0Btb25leWJ1dHRvbi5jb20iCiAgICB9LAogICAgImxpbWl0IjogMTAKICB9Cn0=)
-
-[BITKEY.paymail = satchmo@moneybutton.com](https://b.map.sv/query/ewogICJ2IjogMywKICAicSI6IHsKICAgICJmaW5kIjogewogICAgICAiQklUS0VZLnBheW1haWwiOiAic2F0Y2htb0Btb25leWJ1dHRvbi5jb20iCiAgICB9LAogICAgImxpbWl0IjogMTAKICB9Cn0=)
 
 With BitQuery you can search in all sorts of ways.
 
